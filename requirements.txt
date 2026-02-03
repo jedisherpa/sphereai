@@ -1,0 +1,18 @@
+# requirements.txt
+# Core dependencies for Sphere CLI
+
+# CLI framework
+click>=8.0.0
+
+# Rich terminal output
+rich>=13.0.0
+
+# Git integration
+gitpython>=3.1.0
+
+# RSS Feed Support
+feedparser>=6.0.0
+requests>=2.28.0
+
+# YAML configuration
+pyyaml>=6.0.0
