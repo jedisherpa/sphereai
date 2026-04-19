@@ -1,0 +1,25 @@
+name: media-workbench-ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install
+        working-directory: media-workbench
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -e .
+      - name: Test
+        working-directory: media-workbench
+        run: |
+          PYTHONPATH=src python -m unittest discover -s tests -v
+          python -m compileall src
+          PYTHONPATH=src python -m media_workbench.main release-preflight

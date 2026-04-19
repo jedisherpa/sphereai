@@ -119,6 +119,19 @@ sphere llm models
 
 ---
 
+
+## Local Media Workbench Companion Project
+
+This repository now also includes a standalone project at `media-workbench/` focused on local OCR/ASR/diarization ingestion workflows.
+
+- Entry docs: `media-workbench/README.md`
+- Full runbook: `media-workbench/BUILD_AND_RUN.md`
+- Release checks: `media-workbench/docs/release/release-checklist.md`
+
+If you only want the Media Workbench service, work inside `media-workbench/` and ignore the `sphere` package.
+
+---
+
 ## Analysis Commands
 
 ### `sphere analyze <query>`
