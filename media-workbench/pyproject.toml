@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "local-media-workbench"
+version = "0.1.0"
+description = "Standalone local-first media workbench scaffold"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Local Media Workbench Team"}]
+dependencies = []
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
