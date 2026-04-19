@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .jobs import append_job_log
 from .models import utc_stamp
+from .ocr import find_tesseract, run_tesseract_ocr
 from .spikes import run_asr_spike, run_connector_spike, run_diarization_spike, run_ocr_spike
 
 
@@ -24,7 +25,14 @@ def process_job(conn: sqlite3.Connection, workspace_root: Path, job_row: sqlite3
     append_job_log(conn, job_id, f"processing {job_type}")
 
     if job_type == "ocr":
-        out = run_ocr_spike(workspace_root, asset_hash)
+        asset = conn.execute("SELECT source_path FROM assets WHERE asset_hash = ?", (asset_hash,)).fetchone()
+        source_path = Path(asset["source_path"]) if asset else None
+        if source_path and source_path.exists() and find_tesseract():
+            out = run_tesseract_ocr(workspace_root, asset_hash, source_path)
+            append_job_log(conn, job_id, "ocr engine: tesseract-cli")
+        else:
+            out = run_ocr_spike(workspace_root, asset_hash)
+            append_job_log(conn, job_id, "ocr engine: spike fallback")
         conn.execute(
             "INSERT INTO ocr_results(asset_hash, result_json_path, text_path, created_at) VALUES (?, ?, ?, ?)",
             (asset_hash, str(out / "result.json"), str(out / "text.txt"), utc_stamp()),
