@@ -42,6 +42,15 @@ After installing Tesseract:
 ./scripts/dev/smoke_ocr.sh
 ```
 
+## 6b) Smoke test local ASR
+When a Xenova/Transformers.js Whisper cache is available:
+```bash
+MEDIA_WORKBENCH_XENOVA_MODEL_ROOT="/path/to/storage/models" \
+MEDIA_WORKBENCH_XENOVA_MODEL="Xenova/whisper-large" \
+MEDIA_WORKBENCH_XENOVA_NODE_MODULES="/path/to/node_modules" \
+./scripts/dev/smoke_asr.sh
+```
+
 ## 7) Release preflight
 ```bash
 PYTHONPATH=src python -m media_workbench.main release-preflight

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from pathlib import Path
 
-from .asr import find_whisper, run_whisper_asr
+from .asr import find_whisper, run_whisper_asr, run_xenova_asr
 from .jobs import append_job_log
 from .models import utc_stamp
 from .ocr import find_tesseract, run_tesseract_ocr
@@ -41,7 +42,11 @@ def process_job(conn: sqlite3.Connection, workspace_root: Path, job_row: sqlite3
         content = (out / "text.txt").read_text(encoding="utf-8")
         index_text(conn, asset_hash, "ocr", content)
     elif job_type == "asr":
-        if source_path and source_path.exists() and find_whisper():
+        asr_backend = os.environ.get("MEDIA_WORKBENCH_ASR_BACKEND", "auto").lower()
+        if source_path and source_path.exists() and asr_backend == "xenova":
+            out = run_xenova_asr(workspace_root, asset_hash, source_path)
+            append_job_log(conn, job_id, "asr engine: xenova-transformers")
+        elif source_path and source_path.exists() and find_whisper():
             out = run_whisper_asr(workspace_root, asset_hash, source_path)
             append_job_log(conn, job_id, "asr engine: whisper-cli")
         else:

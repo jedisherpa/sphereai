@@ -60,3 +60,4 @@ PYTHONPATH=src python -m media_workbench.main serve --workspace ./workspace --po
 - See `BUILD_AND_RUN.md` for clone/install/test/run/release-preflight steps.
 - Quick smoke script: `./scripts/dev/smoke_api.sh`
 - Real OCR smoke script: `./scripts/dev/smoke_ocr.sh`
+- Local ASR smoke script: `./scripts/dev/smoke_asr.sh`
