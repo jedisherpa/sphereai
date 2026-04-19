@@ -20,6 +20,12 @@ cd media-workbench
 PYTHONPATH=src python -m media_workbench.main serve --workspace ./workspace --port 8765
 ```
 
+Optional tokened local API mode:
+```bash
+MEDIA_WORKBENCH_API_TOKEN="change-me-local-token" \
+PYTHONPATH=src python -m media_workbench.main serve --workspace ./workspace --host 127.0.0.1 --port 8765
+```
+
 ## API endpoints
 - `GET /health`
 - `GET /capabilities`
@@ -46,6 +52,7 @@ PYTHONPATH=src python -m media_workbench.main serve --workspace ./workspace --po
 - User install: `docs/user/install-guide.md`
 - Quickstart: `docs/user/quickstart.md`
 - API access: `docs/user/api-access.md`
+- Postman/Insomnia collection: `docs/api/media-workbench.postman_collection.json`
 - Settings: `docs/user/settings-guide.md`
 - Troubleshooting: `docs/user/troubleshooting.md`
 - Backup/restore: `docs/user/backup-restore.md`
@@ -61,5 +68,6 @@ PYTHONPATH=src python -m media_workbench.main serve --workspace ./workspace --po
 ## Build/run guide
 - See `BUILD_AND_RUN.md` for clone/install/test/run/release-preflight steps.
 - Quick smoke script: `./scripts/dev/smoke_api.sh`
+- Auth smoke script: `./scripts/dev/smoke_auth.sh`
 - Real OCR smoke script: `./scripts/dev/smoke_ocr.sh`
 - Local ASR smoke script: `./scripts/dev/smoke_asr.sh`

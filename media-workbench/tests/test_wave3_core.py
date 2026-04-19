@@ -217,6 +217,38 @@ class Wave3CoreTests(unittest.TestCase):
                 server.shutdown()
                 server.server_close()
 
+    def test_api_token_protects_non_health_endpoints(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            paths = ensure_workspace(root)
+            conn = connect(paths.db_path)
+            migrate(conn)
+
+            server = create_server("127.0.0.1", 0, {"conn": conn, "paths": paths, "api_token": "local-test-token"})
+            port = server.server_address[1]
+            t = threading.Thread(target=server.serve_forever, daemon=True)
+            t.start()
+            try:
+                with urlopen(f"http://127.0.0.1:{port}/health", timeout=2) as r:
+                    payload = json.loads(r.read().decode("utf-8"))
+                    self.assertEqual(payload["status"], "ok")
+                    self.assertTrue(payload["auth_required"])
+
+                with self.assertRaises(HTTPError) as raised:
+                    urlopen(f"http://127.0.0.1:{port}/status", timeout=2)
+                self.assertEqual(raised.exception.code, 401)
+
+                req = Request(
+                    f"http://127.0.0.1:{port}/status",
+                    headers={"Authorization": "Bearer local-test-token"},
+                )
+                with urlopen(req, timeout=2) as r:
+                    payload = json.loads(r.read().decode("utf-8"))
+                    self.assertEqual(payload["status"], "ok")
+            finally:
+                server.shutdown()
+                server.server_close()
+
 
 if __name__ == "__main__":
     unittest.main()

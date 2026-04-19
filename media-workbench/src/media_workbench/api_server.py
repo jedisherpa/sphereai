@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import json
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -17,11 +18,13 @@ from .workspace import ingest_file
 class ApiHandler(BaseHTTPRequestHandler):
     server_version = "MediaWorkbenchHTTP/0.2"
 
-    def _json(self, payload: dict, status: int = HTTPStatus.OK) -> None:
+    def _json(self, payload: dict, status: int = HTTPStatus.OK, headers: dict[str, str] | None = None) -> None:
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        for key, value in (headers or {}).items():
+            self.send_header(key, value)
         self.end_headers()
         self.wfile.write(body)
 
@@ -33,6 +36,32 @@ class ApiHandler(BaseHTTPRequestHandler):
     @property
     def app(self):
         return self.server.app_context  # type: ignore[attr-defined]
+
+    def _api_token(self) -> str:
+        return str(self.app.get("api_token") or "")
+
+    def _authorized(self) -> bool:
+        token = self._api_token()
+        if not token:
+            return True
+
+        auth = self.headers.get("Authorization", "")
+        prefix = "Bearer "
+        if auth.startswith(prefix) and hmac.compare_digest(auth[len(prefix) :], token):
+            return True
+
+        header_token = self.headers.get("X-Media-Workbench-Token", "")
+        return bool(header_token and hmac.compare_digest(header_token, token))
+
+    def _require_auth(self) -> bool:
+        if self._authorized():
+            return True
+        self._json(
+            {"error": "unauthorized"},
+            HTTPStatus.UNAUTHORIZED,
+            {"WWW-Authenticate": "Bearer realm=\"media-workbench\""},
+        )
+        return False
 
     def _ingest_asset(self, body: dict) -> tuple[str, Path]:
         source = Path(body["source_path"]).expanduser().resolve()
@@ -49,7 +78,9 @@ class ApiHandler(BaseHTTPRequestHandler):
         try:
             parsed = urlparse(self.path)
             if parsed.path == "/health":
-                return self._json({"status": "ok"})
+                return self._json({"status": "ok", "auth_required": bool(self._api_token())})
+            if not self._require_auth():
+                return
             if parsed.path == "/capabilities":
                 return self._json(describe_capabilities(get_settings(self.app["conn"])))
             if parsed.path == "/status":
@@ -91,6 +122,8 @@ class ApiHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         try:
+            if not self._require_auth():
+                return
             if self.path == "/ingest":
                 body = self._read_json()
                 asset_hash, stored = self._ingest_asset(body)

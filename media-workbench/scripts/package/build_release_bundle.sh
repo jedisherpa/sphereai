@@ -9,6 +9,6 @@ BUNDLE="$OUT_DIR/media-workbench-release-docs.tar.gz"
 
 tar -czf "$BUNDLE" \
   -C "$ROOT_DIR" \
-  README.md RELEASE_NOTES.md docs/release docs/user docs/dev docs/security
+  README.md RELEASE_NOTES.md docs/api docs/release docs/user docs/dev docs/security
 
 echo "Created release docs bundle: $BUNDLE"

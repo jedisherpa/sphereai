@@ -30,6 +30,15 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 PYTHONPATH=src python -m media_workbench.main serve --workspace ./workspace --port 8765
 ```
 
+Optional authenticated local-only run:
+```bash
+MEDIA_WORKBENCH_API_TOKEN="change-me-local-token" \
+PYTHONPATH=src python -m media_workbench.main serve \
+  --workspace ./workspace \
+  --host 127.0.0.1 \
+  --port 8765
+```
+
 ## 6) Smoke test API
 In another terminal:
 ```bash
@@ -39,6 +48,18 @@ In another terminal:
 Check local engine availability:
 ```bash
 curl http://127.0.0.1:8765/capabilities
+```
+
+For a tokened run:
+```bash
+curl -H "Authorization: Bearer change-me-local-token" http://127.0.0.1:8765/capabilities
+```
+
+You can also import `docs/api/media-workbench.postman_collection.json` into Postman or Insomnia.
+
+Auth smoke:
+```bash
+./scripts/dev/smoke_auth.sh
 ```
 
 ## 6a) Smoke test real OCR
@@ -72,6 +93,7 @@ Ingest a file and wait for the processing result:
 ```bash
 python scripts/dev/api_ingest_wait.py \
   --base-url http://127.0.0.1:8765 \
+  --api-token change-me-local-token \
   --file /path/to/audio.wav \
   --media-kind audio \
   --print-output

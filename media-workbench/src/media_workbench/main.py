@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 from .api_server import run_server
@@ -37,7 +38,14 @@ def run_wave2(workspace_root: Path, sample_file: Path) -> None:
     print(f"Wave 2 spikes completed for asset {asset_hash} (job {job_id}).")
 
 
-def run_serve(workspace_root: Path, host: str, port: int, max_concurrency: int, allow_external: bool) -> None:
+def run_serve(
+    workspace_root: Path,
+    host: str,
+    port: int,
+    max_concurrency: int,
+    allow_external: bool,
+    api_token: str | None = None,
+) -> None:
     paths = ensure_workspace(workspace_root)
     conn = connect(paths.db_path)
     migrate(conn)
@@ -53,9 +61,10 @@ def run_serve(workspace_root: Path, host: str, port: int, max_concurrency: int, 
         allow_external_enrichment=allow_external,
     )
     engine.start()
-    print(f"Server starting on http://{host}:{port} with max_concurrency={max_concurrency}")
+    auth_status = "enabled" if api_token else "disabled"
+    print(f"Server starting on http://{host}:{port} with max_concurrency={max_concurrency} auth={auth_status}")
     try:
-        run_server(host, port, {"conn": conn, "paths": paths, "engine": engine})
+        run_server(host, port, {"conn": conn, "paths": paths, "engine": engine, "api_token": api_token or ""})
     finally:
         engine.stop()
 
@@ -84,6 +93,11 @@ def main() -> None:
     serve.add_argument("--port", type=int, default=8765)
     serve.add_argument("--max-concurrency", type=int, default=DEFAULT_SETTINGS["max_concurrency"])
     serve.add_argument("--allow-external-enrichment", action="store_true")
+    serve.add_argument(
+        "--api-token",
+        default=os.environ.get("MEDIA_WORKBENCH_API_TOKEN"),
+        help="Optional bearer token required for all endpoints except /health.",
+    )
 
     preflight = sub.add_parser("release-preflight", help="Run release documentation/tooling preflight checks")
     preflight.add_argument("--project-root", type=Path, default=Path(__file__).resolve().parents[2])
@@ -93,7 +107,7 @@ def main() -> None:
         run_wave2(args.workspace, args.sample)
         return
     if args.command == "serve":
-        run_serve(args.workspace, args.host, args.port, args.max_concurrency, args.allow_external_enrichment)
+        run_serve(args.workspace, args.host, args.port, args.max_concurrency, args.allow_external_enrichment, args.api_token)
         return
     if args.command == "release-preflight":
         raise SystemExit(run_release_preflight_cmd(args.project_root))

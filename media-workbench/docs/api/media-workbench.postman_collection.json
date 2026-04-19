@@ -1,0 +1,226 @@
+{
+  "info": {
+    "name": "Media Workbench Local API",
+    "description": "Local-first Media Workbench API requests for Postman or Insomnia import. Set base_url and api_token collection variables before running protected endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{api_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8765"
+    },
+    {
+      "key": "api_token",
+      "value": ""
+    },
+    {
+      "key": "sample_image_path",
+      "value": "/path/to/screenshot.png"
+    },
+    {
+      "key": "sample_audio_path",
+      "value": "/path/to/voice-note.wav"
+    },
+    {
+      "key": "asset_hash",
+      "value": ""
+    },
+    {
+      "key": "job_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "url": "{{base_url}}/health"
+      }
+    },
+    {
+      "name": "Capabilities",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/capabilities"
+      }
+    },
+    {
+      "name": "Status",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/status"
+      }
+    },
+    {
+      "name": "Configure Local OCR",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ocr_backend\": \"tesseract\",\n  \"tesseract_path\": \"tesseract\"\n}"
+        },
+        "url": "{{base_url}}/settings"
+      }
+    },
+    {
+      "name": "Configure Local ASR",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"asr_backend\": \"xenova\",\n  \"node_path\": \"node\",\n  \"xenova_model_root\": \"/path/to/storage/models\",\n  \"xenova_model\": \"Xenova/whisper-large\",\n  \"xenova_node_modules\": \"/path/to/node_modules\"\n}"
+        },
+        "url": "{{base_url}}/settings"
+      }
+    },
+    {
+      "name": "Ingest Image And Enqueue OCR",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "if (body.asset_hash) pm.collectionVariables.set('asset_hash', body.asset_hash);",
+              "if (body.job_id) pm.collectionVariables.set('job_id', String(body.job_id));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"source_path\": \"{{sample_image_path}}\",\n  \"media_kind\": \"image\"\n}"
+        },
+        "url": "{{base_url}}/ingest-and-enqueue"
+      }
+    },
+    {
+      "name": "Ingest Audio And Enqueue ASR",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "if (body.asset_hash) pm.collectionVariables.set('asset_hash', body.asset_hash);",
+              "if (body.job_id) pm.collectionVariables.set('job_id', String(body.job_id));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"source_path\": \"{{sample_audio_path}}\",\n  \"media_kind\": \"audio\"\n}"
+        },
+        "url": "{{base_url}}/ingest-and-enqueue"
+      }
+    },
+    {
+      "name": "List Jobs",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/jobs"
+      }
+    },
+    {
+      "name": "Get Job",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/jobs/{{job_id}}"
+      }
+    },
+    {
+      "name": "Get Job Logs",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/jobs/{{job_id}}/logs"
+      }
+    },
+    {
+      "name": "Search",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/search?q=welcome",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "search"
+          ],
+          "query": [
+            {
+              "key": "q",
+              "value": "welcome"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Export Asset Manifest",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/export/{{asset_hash}}"
+      }
+    },
+    {
+      "name": "Cancel Job",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/jobs/{{job_id}}/cancel"
+      }
+    },
+    {
+      "name": "Retry Job",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/jobs/{{job_id}}/retry"
+      }
+    }
+  ]
+}
