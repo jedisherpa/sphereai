@@ -14,14 +14,15 @@ PRISM_MODEL_ROOT="$HOME/Library/Application Support/com.sovereign.prismai.deskto
 PRISM_SOURCE_NODE_MODULES="$HOME/Documents/Playground/prism-source/PrismAI/collector/node_modules"
 PRISM_APP_NODE_MODULES="$HOME/Applications/PrismAI-Local.app/Contents/Resources/_up_/runtime/core/collector/node_modules"
 
-export MEDIA_WORKBENCH_ASR_BACKEND="${MEDIA_WORKBENCH_ASR_BACKEND:-xenova}"
-export MEDIA_WORKBENCH_XENOVA_MODEL_ROOT="${MEDIA_WORKBENCH_XENOVA_MODEL_ROOT:-$PRISM_MODEL_ROOT}"
-export MEDIA_WORKBENCH_XENOVA_MODEL="${MEDIA_WORKBENCH_XENOVA_MODEL:-Xenova/whisper-large}"
-if [ -z "${MEDIA_WORKBENCH_XENOVA_NODE_MODULES:-}" ]; then
+ASR_BACKEND="${MEDIA_WORKBENCH_ASR_BACKEND:-xenova}"
+XENOVA_MODEL_ROOT="${MEDIA_WORKBENCH_XENOVA_MODEL_ROOT:-$PRISM_MODEL_ROOT}"
+XENOVA_MODEL="${MEDIA_WORKBENCH_XENOVA_MODEL:-Xenova/whisper-large}"
+XENOVA_NODE_MODULES="${MEDIA_WORKBENCH_XENOVA_NODE_MODULES:-}"
+if [ -z "$XENOVA_NODE_MODULES" ]; then
   if [ -d "$PRISM_SOURCE_NODE_MODULES/@xenova/transformers" ]; then
-    export MEDIA_WORKBENCH_XENOVA_NODE_MODULES="$PRISM_SOURCE_NODE_MODULES"
+    XENOVA_NODE_MODULES="$PRISM_SOURCE_NODE_MODULES"
   elif [ -d "$PRISM_APP_NODE_MODULES/@xenova/transformers" ]; then
-    export MEDIA_WORKBENCH_XENOVA_NODE_MODULES="$PRISM_APP_NODE_MODULES"
+    XENOVA_NODE_MODULES="$PRISM_APP_NODE_MODULES"
   fi
 fi
 
@@ -33,11 +34,12 @@ if ! command -v node >/dev/null 2>&1; then
   echo "node is required for Xenova ASR smoke checks." >&2
   exit 1
 fi
-if [ ! -d "$MEDIA_WORKBENCH_XENOVA_MODEL_ROOT/${MEDIA_WORKBENCH_XENOVA_MODEL}" ]; then
-  echo "Xenova model not found: $MEDIA_WORKBENCH_XENOVA_MODEL_ROOT/${MEDIA_WORKBENCH_XENOVA_MODEL}" >&2
+NODE_BIN="$(command -v node)"
+if [ ! -d "$XENOVA_MODEL_ROOT/${XENOVA_MODEL}" ]; then
+  echo "Xenova model not found: $XENOVA_MODEL_ROOT/${XENOVA_MODEL}" >&2
   exit 1
 fi
-if [ -z "${MEDIA_WORKBENCH_XENOVA_NODE_MODULES:-}" ] || [ ! -d "$MEDIA_WORKBENCH_XENOVA_NODE_MODULES/@xenova/transformers" ]; then
+if [ -z "$XENOVA_NODE_MODULES" ] || [ ! -d "$XENOVA_NODE_MODULES/@xenova/transformers" ]; then
   echo "Set MEDIA_WORKBENCH_XENOVA_NODE_MODULES to a node_modules directory containing @xenova/transformers." >&2
   exit 1
 fi
@@ -84,6 +86,26 @@ done
 
 curl -fsS "http://$HOST:$PORT/health" >/tmp/media_workbench_asr_health.json
 
+jq -n \
+  --arg asr_backend "$ASR_BACKEND" \
+  --arg node_path "$NODE_BIN" \
+  --arg model_root "$XENOVA_MODEL_ROOT" \
+  --arg model "$XENOVA_MODEL" \
+  --arg node_modules "$XENOVA_NODE_MODULES" \
+  '{
+    asr_backend: $asr_backend,
+    node_path: $node_path,
+    xenova_model_root: $model_root,
+    xenova_model: $model,
+    xenova_node_modules: $node_modules
+  }' |
+  curl -fsS -H "Content-Type: application/json" -d @- "http://$HOST:$PORT/settings" >/tmp/media_workbench_asr_settings.json
+CAPABILITIES="$(curl -fsS "http://$HOST:$PORT/capabilities")"
+if [ "$(printf '%s' "$CAPABILITIES" | jq -r '.engines.asr[] | select(.id == "xenova") | .available')" != "true" ]; then
+  printf 'Xenova ASR is not available according to /capabilities. payload=%s\n' "$CAPABILITIES" >&2
+  exit 1
+fi
+
 INGEST_JOB="$(
   jq -n --arg source_path "$SAMPLE_AUDIO" '{source_path: $source_path, media_kind: "audio"}' |
     curl -fsS -H "Content-Type: application/json" -d @- "http://$HOST:$PORT/ingest-and-enqueue"
@@ -124,5 +146,5 @@ if [ ! -s "$TEXT_PATH" ]; then
 fi
 
 printf 'ASR smoke checks passed.\n'
-printf 'model=%s\nasset_hash=%s\njob_id=%s\ntext_path=%s\n' "$MEDIA_WORKBENCH_XENOVA_MODEL" "$ASSET_HASH" "$JOB_ID" "$TEXT_PATH"
+printf 'model=%s\nasset_hash=%s\njob_id=%s\ntext_path=%s\n' "$XENOVA_MODEL" "$ASSET_HASH" "$JOB_ID" "$TEXT_PATH"
 cat "$TEXT_PATH"

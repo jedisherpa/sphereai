@@ -36,6 +36,11 @@ In another terminal:
 ./scripts/dev/smoke_api.sh
 ```
 
+Check local engine availability:
+```bash
+curl http://127.0.0.1:8765/capabilities
+```
+
 ## 6a) Smoke test real OCR
 After installing Tesseract:
 ```bash
@@ -49,6 +54,27 @@ MEDIA_WORKBENCH_XENOVA_MODEL_ROOT="/path/to/storage/models" \
 MEDIA_WORKBENCH_XENOVA_MODEL="Xenova/whisper-large" \
 MEDIA_WORKBENCH_XENOVA_NODE_MODULES="/path/to/node_modules" \
 ./scripts/dev/smoke_asr.sh
+```
+
+Persist a local Xenova/Transformers.js Whisper route for normal API runs:
+```bash
+curl -X POST http://127.0.0.1:8765/settings \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "asr_backend": "xenova",
+    "xenova_model_root": "/path/to/storage/models",
+    "xenova_model": "Xenova/whisper-large",
+    "xenova_node_modules": "/path/to/node_modules"
+  }'
+```
+
+Ingest a file and wait for the processing result:
+```bash
+python scripts/dev/api_ingest_wait.py \
+  --base-url http://127.0.0.1:8765 \
+  --file /path/to/audio.wav \
+  --media-kind audio \
+  --print-output
 ```
 
 ## 7) Release preflight

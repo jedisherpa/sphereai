@@ -31,6 +31,7 @@ for _ in $(seq 1 20); do
 done
 
 cat /tmp/media_workbench_health.json
+curl -fsS "http://$HOST:$PORT/capabilities" | tee /tmp/media_workbench_capabilities.json
 curl -fsS "http://$HOST:$PORT/status" | tee /tmp/media_workbench_status.json
 
 echo "Smoke checks passed."

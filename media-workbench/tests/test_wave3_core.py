@@ -1,9 +1,11 @@
 import json
+import os
 import tempfile
 import threading
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -142,6 +144,75 @@ class Wave3CoreTests(unittest.TestCase):
                 self.assertEqual(job["asset_hash"], payload["asset_hash"])
                 self.assertEqual(job["job_type"], "ocr")
                 self.assertEqual(job["state"], "pending")
+            finally:
+                server.shutdown()
+                server.server_close()
+
+    def test_capabilities_reports_persisted_engine_settings(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            paths = ensure_workspace(root)
+            conn = connect(paths.db_path)
+            migrate(conn)
+
+            fake_tesseract = root / "tesseract"
+            fake_tesseract.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+            fake_node = root / "node"
+            fake_node.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+            model_root = root / "models"
+            (model_root / "Xenova" / "whisper-small").mkdir(parents=True)
+            node_modules = root / "node_modules"
+            (node_modules / "@xenova" / "transformers").mkdir(parents=True)
+            (node_modules / "wavefile").mkdir(parents=True)
+
+            server = create_server("127.0.0.1", 0, {"conn": conn, "paths": paths})
+            port = server.server_address[1]
+            t = threading.Thread(target=server.serve_forever, daemon=True)
+            t.start()
+            engine_env = {
+                "MEDIA_WORKBENCH_OCR_BACKEND": "",
+                "MEDIA_WORKBENCH_TESSERACT": "",
+                "MEDIA_WORKBENCH_ASR_BACKEND": "",
+                "MEDIA_WORKBENCH_WHISPER": "",
+                "MEDIA_WORKBENCH_NODE": "",
+                "MEDIA_WORKBENCH_XENOVA_MODEL_ROOT": "",
+                "MEDIA_WORKBENCH_XENOVA_MODEL": "",
+                "MEDIA_WORKBENCH_XENOVA_NODE_MODULES": "",
+            }
+            try:
+                with patch.dict(os.environ, engine_env):
+                    settings_req = Request(
+                        f"http://127.0.0.1:{port}/settings",
+                        data=json.dumps(
+                            {
+                                "ocr_backend": "tesseract",
+                                "tesseract_path": str(fake_tesseract),
+                                "asr_backend": "xenova",
+                                "node_path": str(fake_node),
+                                "xenova_model_root": str(model_root),
+                                "xenova_model": "Xenova/whisper-small",
+                                "xenova_node_modules": str(node_modules),
+                            }
+                        ).encode("utf-8"),
+                        headers={"Content-Type": "application/json"},
+                        method="POST",
+                    )
+                    with urlopen(settings_req, timeout=2) as r:
+                        payload = json.loads(r.read().decode("utf-8"))
+                        self.assertEqual(payload["settings"]["asr_backend"], "xenova")
+
+                    with urlopen(f"http://127.0.0.1:{port}/capabilities", timeout=2) as r:
+                        payload = json.loads(r.read().decode("utf-8"))
+
+                self.assertTrue(payload["local_first"])
+                self.assertFalse(payload["external_enrichment_enabled"])
+                self.assertEqual(payload["config"]["ocr_backend"], "tesseract")
+                self.assertEqual(payload["config"]["asr_backend"], "xenova")
+                self.assertEqual(payload["config"]["xenova_model_root"], str(model_root))
+                ocr_engines = {engine["id"]: engine for engine in payload["engines"]["ocr"]}
+                asr_engines = {engine["id"]: engine for engine in payload["engines"]["asr"]}
+                self.assertTrue(ocr_engines["tesseract"]["available"])
+                self.assertTrue(asr_engines["xenova"]["available"])
             finally:
                 server.shutdown()
                 server.server_close()

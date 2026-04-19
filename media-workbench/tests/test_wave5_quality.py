@@ -46,8 +46,24 @@ class Wave5QualityTests(unittest.TestCase):
 
             rows = search(conn, "welcome")
             self.assertGreaterEqual(len(rows), 1)
+            result = conn.execute("SELECT * FROM transcript_results WHERE asset_hash = ?", ("asset-search",)).fetchone()
+            conn.execute(
+                """
+                INSERT INTO transcript_results(asset_hash, transcript_json_path, transcript_txt_path, transcript_srt_path, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    result["asset_hash"],
+                    result["transcript_json_path"],
+                    result["transcript_txt_path"],
+                    result["transcript_srt_path"],
+                    result["created_at"],
+                ),
+            )
+            conn.commit()
             manifest = export_manifest(conn, "asset-search")
             self.assertGreaterEqual(len(manifest["transcripts"]), 1)
+            self.assertEqual(len(manifest["transcripts"]), len(set(manifest["transcripts"])))
 
     def test_api_rejects_invalid_media_kind(self) -> None:
         with tempfile.TemporaryDirectory() as td:

@@ -22,6 +22,7 @@ PYTHONPATH=src python -m media_workbench.main serve --workspace ./workspace --po
 
 ## API endpoints
 - `GET /health`
+- `GET /capabilities`
 - `GET /status`
 - `POST /ingest` with `{ "source_path": "/path/file.png", "media_kind": "image|audio" }`
 - `POST /ingest-and-enqueue` with `{ "source_path": "/path/file.png", "media_kind": "image|audio" }`
@@ -33,7 +34,7 @@ PYTHONPATH=src python -m media_workbench.main serve --workspace ./workspace --po
 - `POST /jobs/<id>/retry`
 - `GET /search?q=...`
 - `GET /export/<asset_hash>`
-- `POST /settings` with `{ "max_concurrency": 4, "allow_external_enrichment": false }`
+- `POST /settings` with `{ "max_concurrency": 4, "allow_external_enrichment": false, "asr_backend": "auto|xenova|whisper|whisper-cli|spike", "ocr_backend": "auto|tesseract|spike" }`
 
 ### Safety policy
 - No automatic biometric identity recognition.
@@ -44,6 +45,7 @@ PYTHONPATH=src python -m media_workbench.main serve --workspace ./workspace --po
 ## Documentation
 - User install: `docs/user/install-guide.md`
 - Quickstart: `docs/user/quickstart.md`
+- API access: `docs/user/api-access.md`
 - Settings: `docs/user/settings-guide.md`
 - Troubleshooting: `docs/user/troubleshooting.md`
 - Backup/restore: `docs/user/backup-restore.md`

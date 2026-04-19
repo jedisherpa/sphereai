@@ -6,6 +6,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from .capabilities import describe_capabilities
 from .jobs import cancel_job, enqueue_job, get_job, get_job_logs, list_jobs, retry_job
 from .pipeline import export_manifest, search
 from .settings import get_settings, set_setting
@@ -49,6 +50,8 @@ class ApiHandler(BaseHTTPRequestHandler):
             parsed = urlparse(self.path)
             if parsed.path == "/health":
                 return self._json({"status": "ok"})
+            if parsed.path == "/capabilities":
+                return self._json(describe_capabilities(get_settings(self.app["conn"])))
             if parsed.path == "/status":
                 settings = get_settings(self.app["conn"])
                 counts = {

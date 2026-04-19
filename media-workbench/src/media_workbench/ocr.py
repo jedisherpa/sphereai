@@ -7,8 +7,8 @@ import subprocess
 from pathlib import Path
 
 
-def find_tesseract() -> str | None:
-    configured = os.environ.get("MEDIA_WORKBENCH_TESSERACT")
+def find_tesseract(configured: str | None = None) -> str | None:
+    configured = configured or os.environ.get("MEDIA_WORKBENCH_TESSERACT")
     if configured:
         configured_path = Path(configured).expanduser()
         if configured_path.is_file():

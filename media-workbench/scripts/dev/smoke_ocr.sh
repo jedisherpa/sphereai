@@ -19,6 +19,7 @@ if ! command -v tesseract >/dev/null 2>&1; then
   echo "tesseract is required for real OCR smoke checks. Install it with: brew install tesseract" >&2
   exit 1
 fi
+TESSERACT_BIN="$(command -v tesseract)"
 
 if [ -z "$PYTHON_BIN" ]; then
   if [ -x "$ROOT_DIR/.venv/bin/python" ]; then
@@ -62,6 +63,15 @@ for _ in $(seq 1 40); do
 done
 
 curl -fsS "http://$HOST:$PORT/health" >/tmp/media_workbench_ocr_health.json
+
+jq -n --arg tesseract_path "$TESSERACT_BIN" \
+  '{ocr_backend: "tesseract", tesseract_path: $tesseract_path}' |
+  curl -fsS -H "Content-Type: application/json" -d @- "http://$HOST:$PORT/settings" >/tmp/media_workbench_ocr_settings.json
+CAPABILITIES="$(curl -fsS "http://$HOST:$PORT/capabilities")"
+if [ "$(printf '%s' "$CAPABILITIES" | jq -r '.engines.ocr[] | select(.id == "tesseract") | .available')" != "true" ]; then
+  printf 'Tesseract is not available according to /capabilities. payload=%s\n' "$CAPABILITIES" >&2
+  exit 1
+fi
 
 INGEST_JOB="$(
   jq -n --arg source_path "$SAMPLE_IMAGE" '{source_path: $source_path, media_kind: "image"}' |
