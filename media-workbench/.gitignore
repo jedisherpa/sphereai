@@ -1,5 +1,7 @@
 __pycache__/
 *.pyc
 workspace/
+.venv/
+src/*.egg-info/
 
 dist/
