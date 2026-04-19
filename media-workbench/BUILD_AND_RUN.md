@@ -53,3 +53,29 @@ From repo root:
 git remote -v
 git push -u origin <branch-name>
 ```
+
+## GitHub publishing checklist
+
+Use this when you want to publish this project branch to GitHub with traceable verification notes:
+
+```bash
+# from repo root
+git status
+git add media-workbench README.md docs reports
+git commit -m "Document media-workbench publishing and usage"
+
+# set remote once (example)
+git remote add origin https://github.com/<owner>/<repo>.git
+
+# push branch
+git push -u origin <branch-name>
+```
+
+Suggested PR body sections:
+1. Motivation
+2. Functional changes
+3. Documentation updates
+4. Verification commands + outcomes
+
+Always include exact commands you ran (tests, compile checks, smoke checks) in the PR description.
+
