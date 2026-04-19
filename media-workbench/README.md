@@ -24,6 +24,7 @@ PYTHONPATH=src python -m media_workbench.main serve --workspace ./workspace --po
 - `GET /health`
 - `GET /status`
 - `POST /ingest` with `{ "source_path": "/path/file.png", "media_kind": "image|audio" }`
+- `POST /ingest-and-enqueue` with `{ "source_path": "/path/file.png", "media_kind": "image|audio" }`
 - `POST /jobs` with `{ "asset_hash": "...", "job_type": "ocr|asr|diarization|enrichment" }`
 - `GET /jobs`
 - `GET /jobs/<id>`
@@ -58,3 +59,4 @@ PYTHONPATH=src python -m media_workbench.main serve --workspace ./workspace --po
 ## Build/run guide
 - See `BUILD_AND_RUN.md` for clone/install/test/run/release-preflight steps.
 - Quick smoke script: `./scripts/dev/smoke_api.sh`
+- Real OCR smoke script: `./scripts/dev/smoke_ocr.sh`

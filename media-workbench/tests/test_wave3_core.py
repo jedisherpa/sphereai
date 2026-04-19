@@ -114,6 +114,38 @@ class Wave3CoreTests(unittest.TestCase):
                 server.shutdown()
                 server.server_close()
 
+    def test_ingest_and_enqueue_chooses_default_job_type(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            paths = ensure_workspace(root)
+            conn = connect(paths.db_path)
+            migrate(conn)
+            image = root / "sample.png"
+            image.write_bytes(b"PNG placeholder")
+
+            server = create_server("127.0.0.1", 0, {"conn": conn, "paths": paths})
+            port = server.server_address[1]
+            t = threading.Thread(target=server.serve_forever, daemon=True)
+            t.start()
+            try:
+                req = Request(
+                    f"http://127.0.0.1:{port}/ingest-and-enqueue",
+                    data=json.dumps({"source_path": str(image), "media_kind": "image"}).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urlopen(req, timeout=2) as r:
+                    payload = json.loads(r.read().decode("utf-8"))
+
+                self.assertEqual(payload["job_type"], "ocr")
+                job = conn.execute("SELECT asset_hash, job_type, state FROM jobs WHERE id = ?", (payload["job_id"],)).fetchone()
+                self.assertEqual(job["asset_hash"], payload["asset_hash"])
+                self.assertEqual(job["job_type"], "ocr")
+                self.assertEqual(job["state"], "pending")
+            finally:
+                server.shutdown()
+                server.server_close()
+
 
 if __name__ == "__main__":
     unittest.main()

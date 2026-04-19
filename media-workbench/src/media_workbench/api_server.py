@@ -33,6 +33,17 @@ class ApiHandler(BaseHTTPRequestHandler):
     def app(self):
         return self.server.app_context  # type: ignore[attr-defined]
 
+    def _ingest_asset(self, body: dict) -> tuple[str, Path]:
+        source = Path(body["source_path"]).expanduser().resolve()
+        media_kind = body["media_kind"]
+        validate_media_kind(media_kind)
+        validate_source_path(source, media_kind)
+        asset_hash, stored = ingest_file(self.app["paths"], source, media_kind)
+        from .jobs import add_asset  # local import to avoid cycle
+
+        add_asset(self.app["conn"], asset_hash, media_kind, stored)
+        return asset_hash, stored
+
     def do_GET(self) -> None:  # noqa: N802
         try:
             parsed = urlparse(self.path)
@@ -79,15 +90,24 @@ class ApiHandler(BaseHTTPRequestHandler):
         try:
             if self.path == "/ingest":
                 body = self._read_json()
-                source = Path(body["source_path"]).expanduser().resolve()
-                media_kind = body["media_kind"]
-                validate_media_kind(media_kind)
-                validate_source_path(source, media_kind)
-                asset_hash, stored = ingest_file(self.app["paths"], source, media_kind)
-                from .jobs import add_asset  # local import to avoid cycle
-
-                add_asset(self.app["conn"], asset_hash, media_kind, stored)
+                asset_hash, stored = self._ingest_asset(body)
                 return self._json({"asset_hash": asset_hash, "stored_path": str(stored)})
+
+            if self.path == "/ingest-and-enqueue":
+                body = self._read_json()
+                media_kind = body["media_kind"]
+                asset_hash, stored = self._ingest_asset(body)
+                job_type = body.get("job_type") or ("ocr" if media_kind == "image" else "asr")
+                job_id = enqueue_job(self.app["conn"], asset_hash, job_type)
+                return self._json(
+                    {
+                        "asset_hash": asset_hash,
+                        "stored_path": str(stored),
+                        "job_id": job_id,
+                        "job_type": job_type,
+                    },
+                    HTTPStatus.CREATED,
+                )
 
             if self.path == "/jobs":
                 body = self._read_json()

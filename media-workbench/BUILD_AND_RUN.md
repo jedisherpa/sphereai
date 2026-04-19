@@ -36,6 +36,12 @@ In another terminal:
 ./scripts/dev/smoke_api.sh
 ```
 
+## 6a) Smoke test real OCR
+After installing Tesseract:
+```bash
+./scripts/dev/smoke_ocr.sh
+```
+
 ## 7) Release preflight
 ```bash
 PYTHONPATH=src python -m media_workbench.main release-preflight
@@ -78,4 +84,3 @@ Suggested PR body sections:
 4. Verification commands + outcomes
 
 Always include exact commands you ran (tests, compile checks, smoke checks) in the PR description.
-

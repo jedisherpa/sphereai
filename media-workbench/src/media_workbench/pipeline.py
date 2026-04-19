@@ -4,6 +4,7 @@ import json
 import sqlite3
 from pathlib import Path
 
+from .asr import find_whisper, run_whisper_asr
 from .jobs import append_job_log
 from .models import utc_stamp
 from .ocr import find_tesseract, run_tesseract_ocr
@@ -23,10 +24,10 @@ def process_job(conn: sqlite3.Connection, workspace_root: Path, job_row: sqlite3
     job_type = job_row["job_type"]
     job_id = int(job_row["id"])
     append_job_log(conn, job_id, f"processing {job_type}")
+    asset = conn.execute("SELECT source_path FROM assets WHERE asset_hash = ?", (asset_hash,)).fetchone()
+    source_path = Path(asset["source_path"]) if asset else None
 
     if job_type == "ocr":
-        asset = conn.execute("SELECT source_path FROM assets WHERE asset_hash = ?", (asset_hash,)).fetchone()
-        source_path = Path(asset["source_path"]) if asset else None
         if source_path and source_path.exists() and find_tesseract():
             out = run_tesseract_ocr(workspace_root, asset_hash, source_path)
             append_job_log(conn, job_id, "ocr engine: tesseract-cli")
@@ -40,7 +41,12 @@ def process_job(conn: sqlite3.Connection, workspace_root: Path, job_row: sqlite3
         content = (out / "text.txt").read_text(encoding="utf-8")
         index_text(conn, asset_hash, "ocr", content)
     elif job_type == "asr":
-        out = run_asr_spike(workspace_root, asset_hash)
+        if source_path and source_path.exists() and find_whisper():
+            out = run_whisper_asr(workspace_root, asset_hash, source_path)
+            append_job_log(conn, job_id, "asr engine: whisper-cli")
+        else:
+            out = run_asr_spike(workspace_root, asset_hash)
+            append_job_log(conn, job_id, "asr engine: spike fallback")
         conn.execute(
             """
             INSERT INTO transcript_results(asset_hash, transcript_json_path, transcript_txt_path, transcript_srt_path, created_at)
