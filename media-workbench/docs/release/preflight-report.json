@@ -1,0 +1,13 @@
+{
+  "checks": {
+    "release_notes": true,
+    "install_matrix": true,
+    "release_checklist": true,
+    "known_issues": true,
+    "rollback_plan": true,
+    "packaging_script": true
+  },
+  "passed": 6,
+  "total": 6,
+  "status": "pass"
+}
